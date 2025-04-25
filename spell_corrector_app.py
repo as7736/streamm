@@ -10,12 +10,16 @@ import spacy
 import subprocess
 import sys
 
-# Try to load the model
 try:
     nlp = spacy.load("en_core_web_sm")
 except OSError:
-    print("Model not found. Installing en_core_web_sm...")
-    subprocess.check_call([sys.executable, "-m", "spacy", "download", "en_core_web_sm"])
+    print("Model not found. Attempting to install en_core_web_sm...")
+    try:
+        subprocess.check_call([sys.executable, "-m", "spacy", "download", "en_core_web_sm"])
+        print("Model installed successfully.")
+    except subprocess.CalledProcessError as e:
+        print(f"Failed to download model. Error: {e}")
+        raise
     nlp = spacy.load("en_core_web_sm")
 
 
