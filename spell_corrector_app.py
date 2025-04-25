@@ -15,8 +15,13 @@ try:
 except OSError:
     print("Model not found. Attempting to install en_core_web_sm...")
     try:
-        subprocess.check_call([sys.executable, "-m", "spacy", "download", "en_core_web_sm"])
-        print("Model installed successfully.")
+        # Capture stderr to log errors
+        result = subprocess.run([sys.executable, "-m", "spacy", "download", "en_core_web_sm"], 
+                                capture_output=True, text=True)
+        if result.returncode != 0:
+            print(f"Error downloading the model: {result.stderr}")
+        else:
+            print("Model downloaded successfully.")
     except subprocess.CalledProcessError as e:
         print(f"Failed to download model. Error: {e}")
         raise
@@ -24,7 +29,7 @@ except OSError:
 
 
 
-nlp = spacy.load("en_core_web_sm")
+
 
 
 
