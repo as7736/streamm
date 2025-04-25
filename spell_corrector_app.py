@@ -8,6 +8,14 @@ from rapidfuzz import fuzz
 import os
 import spacy
 
+try:
+    spacy.load("en_core_web_sm")
+except OSError:
+    import subprocess
+    subprocess.run(["python", "-m", "spacy", "download", "en_core_web_sm"])
+    spacy.load("en_core_web_sm")
+
+
 
 
 nlp = spacy.load("en_core_web_sm")
