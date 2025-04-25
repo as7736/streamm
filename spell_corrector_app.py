@@ -1,7 +1,4 @@
-!pip install -q pyspellchecker==0.8.2
-!pip install opendatasets pandas fuzzywuzzy transformers torch spacy python-Levenshtein
-!python -m spacy download en_core_web_sm
-!pip install -q rapidfuzz python-Levenshtein opendatasets
+
 import streamlit as st
 import pandas as pd
 import torch
