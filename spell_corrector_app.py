@@ -3,17 +3,19 @@ import streamlit as st
 import pandas as pd
 import torch
 from transformers import BertTokenizer, BertForMaskedLM
-import spacy
+
 from rapidfuzz import fuzz
 import os
 import spacy
+import subprocess
 
+# Try to load the model
 try:
-    spacy.load("en_core_web_sm")
+    nlp = spacy.load("en_core_web_sm")
 except OSError:
-    import subprocess
+    print("Model not found. Installing en_core_web_sm...")
     subprocess.run(["python", "-m", "spacy", "download", "en_core_web_sm"])
-    spacy.load("en_core_web_sm")
+    nlp = spacy.load("en_core_web_sm")
 
 
 
