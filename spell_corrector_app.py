@@ -6,27 +6,18 @@ from transformers import BertTokenizer, BertForMaskedLM
 
 from rapidfuzz import fuzz
 import os
-import spacy
 import subprocess
 import sys
 
 try:
+    # Try to load the model
+    import spacy
     nlp = spacy.load("en_core_web_sm")
 except OSError:
-    print("Model not found. Attempting to install en_core_web_sm...")
-    try:
-        # Capture stderr to log errors
-        result = subprocess.run([sys.executable, "-m", "spacy", "download", "en_core_web_sm"], 
-                                capture_output=True, text=True)
-        if result.returncode != 0:
-            print(f"Error downloading the model: {result.stderr}")
-        else:
-            print("Model downloaded successfully.")
-    except subprocess.CalledProcessError as e:
-        print(f"Failed to download model. Error: {e}")
-        raise
+    print("Model not found. Installing en_core_web_sm using Bash...")
+    # Run the installation using a Bash command
+    subprocess.run([sys.executable, "-m", "spacy", "download", "en_core_web_sm"], check=True)
     nlp = spacy.load("en_core_web_sm")
-
 
 
 
