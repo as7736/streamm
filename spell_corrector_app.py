@@ -61,9 +61,10 @@ query = st.text_input("Enter your product search query:")
 # Show correction below
 if query:
     corrected = enhanced_correction_with_freq(query, vocab, token_freq)
-
-    st.markdown("### 🔡 Original Query")
-    st.code(query, language="text")
-
-    st.markdown("### ✅ Corrected Query")
-    st.code(corrected, language="text")
+    col1, col2 = st.columns(2)
+    with col1:
+        st.markdown("### 🔡 Original ")
+        st.code(query, language="text")
+    with col2:
+        st.markdown("### ✅ Corrected ")
+        st.code(corrected, language="text")
