@@ -1,9 +1,3 @@
-transformers
-torch
-spacy
 streamlit
-opendatasets
 pandas
-fuzzywuzzy
-python-Levenshtein
 rapidfuzz
