@@ -1,100 +1,69 @@
+# app.py
 
-import streamlit as st
 import pandas as pd
-import torch
-from transformers import BertTokenizer, BertForMaskedLM
-
 from rapidfuzz import fuzz
-import os
-import subprocess
-import sys
+from collections import Counter
+import streamlit as st
 
-try:
-    # Try to load the model
-    import spacy
-    nlp = spacy.load("en_core_web_sm")
-except OSError:
-    print("Model not found. Installing en_core_web_sm using Bash...")
-    # Run the installation using a Bash command
-    subprocess.run([sys.executable, "-m", "spacy", "download", "en_core_web_sm"], check=True)
-    nlp = spacy.load("en_core_web_sm")
+# ===================== Load & Process Dataset =====================
+@st.cache_data
+def load_data():
+    df1 = pd.read_csv("amazon-products.csv")
+    df2 = pd.read_csv("electronics.csv")
 
+    required_cols = ['title', 'categories', 'manufacturer', 'brand', 'category_code', 'brand01']
+    for col in required_cols:
+        if col not in df1.columns:
+            df1[col] = ''
+        if col not in df2.columns:
+            df2[col] = ''
 
+    df = pd.concat([df1, df2], ignore_index=True)
+    df['combined'] = df[required_cols].fillna('').agg(' '.join, axis=1)
+    df['combined_clean'] = df['combined'].str.lower().str.replace(r'[^a-z0-9 ]', ' ', regex=True)
 
+    all_tokens = " ".join(df['combined_clean'].dropna()).split()
+    token_freq = Counter(all_tokens)
+    vocab = set(token_freq.keys())
 
+    return vocab, token_freq
 
-
-# ===================== Load Models & Dataset =====================
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-nlp = spacy.load("en_core_web_sm")
-tokenizer = BertTokenizer.from_pretrained("bert-base-uncased")
-model = BertForMaskedLM.from_pretrained("bert-base-uncased").to(device)
-model.eval()
-
-# Load your CSV files
-df1 = pd.read_csv("final amazon.csv")
-df2 = pd.read_csv("combined_clean_preview.csv")
-
-for col in df1.columns:
-    if col not in df2.columns:
-        df2[col] = ""
-for col in df2.columns:
-    if col not in df1.columns:
-        df1[col] = ""
-
-df = pd.concat([df1, df2], ignore_index=True)
-df['combined'] = df[['title', 'description', 'categories', 'manufacturer',
-                     'top_review', 'features', 'brand', 'combined_clean']].fillna('').agg('  '.join, axis=1)
-df['combined_clean'] = df['combined'].str.lower().str.replace(r'[^a-z0-9 ]', ' ', regex=True)
-df['combined_clean'] = df['combined_clean'].str.replace(r'[\.\_]', ' ', regex=True)
-
-catalog_vocab = set()
-df['combined_clean'].dropna().apply(lambda x: catalog_vocab.update(x.split()))
-
-def split_and_expand(text):
-    return set(text.replace('.', ' ').split())
-
-def generate_product_expansions(df):
-    product_expansions = set()
-    for _, row in df.iterrows():
-        combined_text = f"{row['title']} {row['description']} {row['categories']} {row['manufacturer']} {row['features']} {row['brand']} {row['combined_clean']} "
-        product_expansions.update(split_and_expand(combined_text))
-    return product_expansions
-
-product_expansions = generate_product_expansions(df)
-
-# ===================== Correction Function =====================
-def enhanced_correction_with_suggestions(text, product_expansions):
+# ===================== Spell Correction Function =====================
+def enhanced_correction_with_freq(text, vocab, token_freq):
     tokens = text.lower().split()
     corrected_tokens = []
+
     for token in tokens:
         if not token:
             continue
-        if token in product_expansions:
+        if token in vocab:
             corrected_tokens.append(token)
         else:
-            suggestions = [term for term in product_expansions if fuzz.ratio(token, term) > 75]
-            if suggestions:
-                corrected_tokens.append(suggestions[0])
+            matches = [(word, fuzz.ratio(token, word)) for word in vocab if fuzz.ratio(token, word) > 75]
+            if matches:
+                best = sorted(matches, key=lambda x: (-token_freq[x[0]], -x[1]))[0][0]
+                corrected_tokens.append(best)
             else:
                 corrected_tokens.append(token)
     return " ".join(corrected_tokens)
 
 # ===================== Streamlit UI =====================
-st.set_page_config(page_title="Keyword Spell Correction", layout="centered")
+st.set_page_config(page_title="Spell Correction", layout="centered")
+st.title("🔍 E-commerce Search Spell Corrector")
 
-st.markdown("## 🔍 Keywords")
-st.markdown("Type your keyword below. Press Enter to get the corrected version.")
+# Load vocab
+with st.spinner("Loading and preparing data..."):
+    vocab, token_freq = load_data()
 
-query = st.text_input("")
+# Input box
+query = st.text_input("Enter your product search query:")
 
+# Show correction below
 if query:
-    corrected = enhanced_correction_with_suggestions(query, product_expansions)
+    corrected = enhanced_correction_with_freq(query, vocab, token_freq)
 
-    col1, col2 = st.columns(2)
-    with col1:
-        st.markdown("### ❌ Original")
-        st.write(query)
-    with col2:
-        st.markdown("### ✅ Corrected")
-        st.write(corrected)
+    st.markdown("### 🔡 Original Query")
+    st.code(query, language="text")
+
+    st.markdown("### ✅ Corrected Query")
+    st.code(corrected, language="text")
