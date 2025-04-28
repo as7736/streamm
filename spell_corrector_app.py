@@ -39,7 +39,7 @@ def enhanced_correction_with_freq(text, vocab, token_freq):
         if token in vocab:
             corrected_tokens.append(token)
         else:
-            matches = [(word, fuzz.ratio(token, word)) for word in vocab if fuzz.ratio(token, word) > 75]
+            matches = [(word, fuzz.ratio(token, word)) for word in vocab if fuzz.ratio(token, word) > 74]
             if matches:
                 best = sorted(matches, key=lambda x: (-token_freq[x[0]], -x[1]))[0][0]
                 corrected_tokens.append(best)
