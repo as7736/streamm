@@ -28,10 +28,36 @@ def load_data():
 
     return vocab, token_freq
 
-# ===================== Spell Correction Function =====================
-def enhanced_correction_with_freq(text, vocab, token_freq):
+# ===================== Soundex Function =====================
+def soundex(word):
+    word = word.lower()
+    codes = {
+        'a': '', 'e': '', 'i': '', 'o': '', 'u': '', 'y': '', 'h': '', 'w': '',
+        'b': '1', 'f': '1', 'p': '1', 'v': '1',
+        'c': '2', 'g': '2', 'j': '2', 'k': '2', 'q': '2', 's': '2', 'x': '2', 'z': '2',
+        'd': '3', 't': '3',
+        'l': '4',
+        'm': '5', 'n': '5',
+        'r': '6'
+    }
+    if not word:
+        return ""
+    first_letter = word[0].upper()
+    encoded = first_letter
+    for char in word[1:]:
+        encoded += codes.get(char, '')
+    encoded = encoded.replace('0', '')
+    result = encoded[0]
+    for char in encoded[1:]:
+        if char != result[-1]:
+            result += char
+    return (result + '000')[:4]
+
+# ===================== Correction function (no Soundex inside) =====================
+def correct_query(text, vocab, token_freq):
     tokens = text.lower().split()
     corrected_tokens = []
+    uncorrected_tokens = []
 
     for token in tokens:
         if not token:
@@ -39,13 +65,33 @@ def enhanced_correction_with_freq(text, vocab, token_freq):
         if token in vocab:
             corrected_tokens.append(token)
         else:
-            matches = [(word, fuzz.ratio(token, word)) for word in vocab if fuzz.ratio(token, word) > 74]
+            matches = []
+            for word in vocab:
+                score = fuzz.ratio(token, word)
+                if score > 74:
+                    matches.append((word, score))
             if matches:
                 best = sorted(matches, key=lambda x: (-token_freq[x[0]], -x[1]))[0][0]
                 corrected_tokens.append(best)
             else:
-                corrected_tokens.append(token)
-    return " ".join(corrected_tokens)
+                corrected_tokens.append(token)  # keep the original
+                uncorrected_tokens.append(token)  # save for soundex
+
+    corrected_text = " ".join(corrected_tokens)
+    return corrected_text, uncorrected_tokens
+
+# ===================== Soundex suggestions separately =====================
+def get_soundex_suggestions(uncorrected_tokens, vocab):
+    suggestions = []
+
+    for token in uncorrected_tokens:
+        token_soundex = soundex(token)
+        soundex_matches = [word for word in vocab if soundex(word) == token_soundex]
+        if soundex_matches:
+            limited_matches = soundex_matches[:3]  # max 3
+            suggestions.append((token, limited_matches))
+
+    return suggestions
 
 # ===================== Streamlit UI =====================
 st.set_page_config(page_title="Spell Correction", layout="centered")
@@ -58,13 +104,21 @@ with st.spinner("Loading and preparing data..."):
 # Input box
 query = st.text_input("Enter your product search query:")
 
-# Show correction below
 if query:
-    corrected = enhanced_correction_with_freq(query, vocab, token_freq)
+    corrected_text, uncorrected_tokens = correct_query(query, vocab, token_freq)
+
     col1, col2 = st.columns(2)
     with col1:
         st.markdown("### 🔡 Original ")
         st.code(query, language="text")
     with col2:
         st.markdown("### ✅ Corrected ")
-        st.code(corrected, language="text")
+        st.code(corrected_text, language="text")
+
+    # Now separately run Soundex for uncorrected tokens
+    soundex_suggestions = get_soundex_suggestions(uncorrected_tokens, vocab)
+
+    if soundex_suggestions:
+        st.markdown("### 🔔 Soundex-based suggestions:")
+        for wrong_word, options in soundex_suggestions:
+            st.markdown(f"**{wrong_word}** → {', '.join(options)}")
