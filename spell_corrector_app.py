@@ -39,12 +39,16 @@ def soundex(word):
         'r': '6'
     }
     if not word:
-        return ""
+        return "0000"
     first_letter = word[0].upper()
     encoded = first_letter
     for char in word[1:]:
         encoded += codes.get(char, '')
     encoded = encoded.replace('0', '')
+
+    if not encoded:  # <-- 🛠 added this line
+        return "0000"  # fallback when encoded is empty
+
     result = encoded[0]
     for char in encoded[1:]:
         if char != result[-1]:
