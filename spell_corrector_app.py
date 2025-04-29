@@ -72,28 +72,38 @@ def correct_query(text, vocab, token_freq):
                 best = sorted(matches, key=lambda x: (-token_freq[x[0]], -x[1]))[0][0]
                 corrected_tokens.append(best)
             else:
-                corrected_tokens.append(token)  # keep the original
-                uncorrected_tokens.append(token)  # save for soundex
+                corrected_tokens.append(token)  # keep original
+                uncorrected_tokens.append(token)
 
     corrected_text = " ".join(corrected_tokens)
     return corrected_text, uncorrected_tokens
 
-# ===================== Soundex suggestions for all tokens =====================
-def get_soundex_suggestions(tokens, vocab):
-    suggestions = []
+# ===================== Soundex + Meaning based Suggestion =====================
+def get_soundex_suggestions_whole_phrase(query_text, vocab):
+    if not query_text.strip():
+        return []
 
-    for token in tokens:
-        if not token:
+    query_soundex = soundex(query_text.replace(' ', ''))
+    candidates = []
+
+    for word in vocab:
+        if not word:
             continue
-        token_soundex = soundex(token)
-        soundex_matches = [word for word in vocab if soundex(word) == token_soundex]
-        if soundex_matches:
-            limited_matches = soundex_matches[:3]  # Max 3 suggestions
-            # Only suggest if different from the token itself
-            if token not in limited_matches:
-                suggestions.append((token, limited_matches))
+        word_soundex = soundex(word)
+        if query_soundex == word_soundex:
+            meaning_score = fuzz.partial_ratio(query_text, word)
+            candidates.append((word, meaning_score))
 
-    return suggestions
+    if not candidates:
+        return []
+
+    # Rank better: First meaning score, then freq
+    candidates_sorted = sorted(candidates, key=lambda x: (-x[1], x[0]))
+
+    # Limit top 5 best suggestions
+    top_suggestions = [word for word, score in candidates_sorted[:5]]
+
+    return top_suggestions
 
 # ===================== Streamlit UI =====================
 st.set_page_config(page_title="Spell Correction", layout="centered")
@@ -117,11 +127,11 @@ if query:
         st.markdown("### ✅ Corrected")
         st.code(corrected_text, language="text")
 
-    # Always run soundex suggestions on original query tokens
-    query_tokens = query.lower().split()
-    soundex_suggestions = get_soundex_suggestions(query_tokens, vocab)
+    # Combined query for better Soundex
+    combined_query = corrected_text.strip()
+
+    soundex_suggestions = get_soundex_suggestions_whole_phrase(combined_query, vocab)
 
     if soundex_suggestions:
-        st.markdown("### ✨ Additional Suggestions (Soundex Matching):")
-        for wrong_word, options in soundex_suggestions:
-            st.markdown(f"**{wrong_word}** → {', '.join(options)}")
+        st.markdown("### ✨ Additional Suggestions (Soundex + Meaning Ranking):")
+        st.write(f"**{combined_query}** → {', '.join(soundex_suggestions)}")
