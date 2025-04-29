@@ -138,4 +138,4 @@ if query:
 
     if soundex_suggestions:
         st.markdown("### ✨ Additional Suggestions (Soundex + Meaning Ranking):")
-        st.write(f"**{{', '.join(soundex_suggestions)}")
+        st.write(f"**{', '.join(soundex_suggestions)}")
