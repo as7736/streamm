@@ -1,5 +1,3 @@
-# app.py
-
 import pandas as pd
 from rapidfuzz import fuzz
 from collections import Counter
@@ -53,7 +51,7 @@ def soundex(word):
             result += char
     return (result + '000')[:4]
 
-# ===================== Correction function (no Soundex inside) =====================
+# ===================== Correction function (normal) =====================
 def correct_query(text, vocab, token_freq):
     tokens = text.lower().split()
     corrected_tokens = []
@@ -80,16 +78,20 @@ def correct_query(text, vocab, token_freq):
     corrected_text = " ".join(corrected_tokens)
     return corrected_text, uncorrected_tokens
 
-# ===================== Soundex suggestions separately =====================
-def get_soundex_suggestions(uncorrected_tokens, vocab):
+# ===================== Soundex suggestions for all tokens =====================
+def get_soundex_suggestions(tokens, vocab):
     suggestions = []
 
-    for token in uncorrected_tokens:
+    for token in tokens:
+        if not token:
+            continue
         token_soundex = soundex(token)
         soundex_matches = [word for word in vocab if soundex(word) == token_soundex]
         if soundex_matches:
-            limited_matches = soundex_matches[:3]  # max 3
-            suggestions.append((token, limited_matches))
+            limited_matches = soundex_matches[:3]  # Max 3 suggestions
+            # Only suggest if different from the token itself
+            if token not in limited_matches:
+                suggestions.append((token, limited_matches))
 
     return suggestions
 
@@ -109,16 +111,17 @@ if query:
 
     col1, col2 = st.columns(2)
     with col1:
-        st.markdown("### 🔡 Original ")
+        st.markdown("### 🔡 Original")
         st.code(query, language="text")
     with col2:
-        st.markdown("### ✅ Corrected ")
+        st.markdown("### ✅ Corrected")
         st.code(corrected_text, language="text")
 
-    # Separately running Soundex for the query
-    soundex_suggestions = get_soundex_suggestions(query, vocab)
+    # Always run soundex suggestions on original query tokens
+    query_tokens = query.lower().split()
+    soundex_suggestions = get_soundex_suggestions(query_tokens, vocab)
 
     if soundex_suggestions:
-        st.markdown("### 🔔 Soundex-based suggestions:")
+        st.markdown("### ✨ Additional Suggestions (Soundex Matching):")
         for wrong_word, options in soundex_suggestions:
             st.markdown(f"**{wrong_word}** → {', '.join(options)}")
