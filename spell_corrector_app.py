@@ -115,8 +115,8 @@ if query:
         st.markdown("### ✅ Corrected ")
         st.code(corrected_text, language="text")
 
-    # Now separately run Soundex for uncorrected tokens
-    soundex_suggestions = get_soundex_suggestions(uncorrected_tokens, vocab)
+    # Separately running Soundex for the query
+    soundex_suggestions = get_soundex_suggestions(query, vocab)
 
     if soundex_suggestions:
         st.markdown("### 🔔 Soundex-based suggestions:")
